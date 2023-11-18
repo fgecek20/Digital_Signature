@@ -2,6 +2,7 @@
 #include "./ui_home.h"
 
 #include "txtmsgencryption.h"
+#include "txtmsgdecryption.h"
 
 Home::Home(QWidget *parent)
     : QMainWindow(parent)
@@ -25,6 +26,6 @@ void Home::on_pbEncrypt_clicked()
 
 void Home::on_pbDecrypt_clicked()
 {
-
+    TxtMsgDecryption* w = new TxtMsgDecryption;
+    w->show();
 }
-
