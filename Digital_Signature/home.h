@@ -15,6 +15,11 @@ public:
     Home(QWidget *parent = nullptr);
     ~Home();
 
+private slots:
+    void on_pbEncrypt_clicked();
+
+    void on_pbDecrypt_clicked();
+
 private:
     Ui::Home *ui;
 };

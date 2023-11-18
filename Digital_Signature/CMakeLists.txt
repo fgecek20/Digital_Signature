@@ -23,6 +23,8 @@ if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(Digital_Signature
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
+        txtmsgencryption.h txtmsgencryption.cpp txtmsgencryption.ui
+        textencryption.h
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET Digital_Signature APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
@@ -42,7 +44,9 @@ else()
     endif()
 endif()
 
-target_link_libraries(Digital_Signature PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
+find_package(Boost REQUIRED COMPONENTS filesystem)
+
+target_link_libraries(Digital_Signature PRIVATE Qt${QT_VERSION_MAJOR}::Widgets /usr/lib/x86_64-linux-gnu/libcryptopp.so PRIVATE Boost::filesystem)
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
@@ -68,3 +72,7 @@ install(TARGETS Digital_Signature
 if(QT_VERSION_MAJOR EQUAL 6)
     qt_finalize_executable(Digital_Signature)
 endif()
+
+include_directories(/usr/include/cryptopp)
+
+link_directories(/usr/lib/x86_64-linux-gnu)
