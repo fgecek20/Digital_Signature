@@ -9,14 +9,16 @@
 #include "modes.h"
 #include "serpent.h"
 #include "hex.h"
+#include "sha.h"
 
 class TextDecryption {
 
 private:
-    std::string plainTextMessage, cipher, encodedMessage, encodedKey, encodedInitVector;
+    std::string plainTextMessage, messageHash, cipher, encodedMessage, encodedKey, encodedInitVector;
     CryptoPP::SecByteBlock* key;
     CryptoPP::byte initVector[CryptoPP::Serpent::BLOCKSIZE];
-    boost::filesystem::path directory, filePathKey, filePathMessage, filePathInitVector;
+    boost::filesystem::path directory, filePathHash, filePathMessage, filePathKey, filePathInitVector;
+    CryptoPP::SHA256 hash;
     bool decryptionPossible;
 
 public:
@@ -24,11 +26,13 @@ public:
         decryptionPossible = true;
 
         directory.append("./MessageComponents");
-        filePathKey = directory / "serpent_encryption_key.txt";
+        filePathHash = directory / "message_hash.txt";
         filePathMessage = directory / "encrypted_message.txt";
+        filePathKey = directory / "serpent_encryption_key.txt";
         filePathInitVector = directory / "initialisation_vector.txt";
 
         if(DirectoryExists()) {
+            FetchHashFromFile();
             FetchMessageFromFile();
             FetchKeyFromFile();
             FetchInitialisationVectorFromFile();
@@ -53,6 +57,22 @@ public:
                                             );
     }
 
+    bool IntegrityCheck() {
+        std::string messageHash_;
+        CryptoPP::StringSource stringSource(plainTextMessage,
+                                            true,
+                                            new CryptoPP::HashFilter(
+                                                hash,
+                                                new CryptoPP::HexEncoder(
+                                                    new CryptoPP::StringSink(messageHash_)
+                                                    )
+                                                )
+                                            );
+        if(!messageHash_.compare(messageHash)) return true;
+        else return false;
+
+    }
+
     std::string ReturnPlainTextMessage() {
         return plainTextMessage;
     }
@@ -62,6 +82,17 @@ public:
     }
 
 private:
+    void FetchHashFromFile() {
+        if(HashFileExists()) {
+            boost::filesystem::fstream hashInputFile(filePathHash);
+            if(hashInputFile.is_open()) {
+                hashInputFile >> messageHash;
+                hashInputFile.close();
+            }
+        }
+        else decryptionPossible = false;
+    }
+
     void FetchMessageFromFile() {
         if(EncryptedMessageFileExists()) {
             boost::filesystem::ifstream messageInputFile(filePathMessage);
@@ -93,6 +124,18 @@ private:
             }
         }
         else decryptionPossible = false;
+    }
+
+    bool HashFileExists() {
+        boost::filesystem::ifstream hashInputFile(filePathHash);
+        if(!hashInputFile.is_open()) {
+            std::cout << "ERROR: Could not open file containing message hash!" << std::endl << std::endl;
+            return false;
+        }
+        else {
+            hashInputFile.close();
+            return true;
+        }
     }
 
     bool EncryptedMessageFileExists() {

@@ -22,6 +22,8 @@ void TxtMsgEncryption::on_pbEncrypt_clicked()
 
     TextEncryption* textEncryption = new TextEncryption(msgText->toStdString());
 
+    textEncryption->CreateMessageHash();
+    textEncryption->SaveMessageHash();
     textEncryption->EncryptMessage();
     textEncryption->SaveEncryptedMessage();
     ui->pteEncryptedMessage->clear();

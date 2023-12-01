@@ -23,6 +23,9 @@ void TxtMsgDecryption::on_pbDecrypt_clicked()
         textDecryption->DecryptText();
         ui->pteDecryptedMessage->clear();
         ui->pteDecryptedMessage->insertPlainText(QString::fromStdString(textDecryption->ReturnPlainTextMessage()));
+
+        if(textDecryption->IntegrityCheck()) std::cout << "Integrity check PASSED" << std::endl;
+        else std::cout << "Integrity check FAILED" << std::endl;
     }
     else std::cout << "Decryption not possible due to missing directory or files" << std::endl;
 

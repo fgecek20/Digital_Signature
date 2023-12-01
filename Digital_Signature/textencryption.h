@@ -10,15 +10,17 @@
 #include "osrng.h"
 #include "serpent.h"
 #include "hex.h"
+#include "sha.h"
 
 class TextEncryption {
 
 private:
-    std::string plainTextMessage, cipher, encodedMessage, encodedKey, encodedInitVector;
+    std::string plainTextMessage, messageHash, cipher, encodedMessage, encodedKey, encodedInitVector;
     CryptoPP::SecByteBlock* key;
     CryptoPP::byte initVector[CryptoPP::Serpent::BLOCKSIZE];
     CryptoPP::AutoSeededRandomPool prng;
-    boost::filesystem::path directory, filePathMessage, filePathKey, filePathInitVector;
+    boost::filesystem::path directory, filePathHash, filePathMessage, filePathKey, filePathInitVector;
+    CryptoPP::SHA256 hash;
 
 public:
     TextEncryption(std::string message) {
@@ -28,6 +30,19 @@ public:
         filePathMessage = directory / "encrypted_message.txt";
         filePathKey = directory / "serpent_encryption_key.txt";
         filePathInitVector = directory / "initialisation_vector.txt";
+        filePathHash = directory / "message_hash.txt";
+    }
+
+    void CreateMessageHash() {
+        CryptoPP::StringSource stringSource(plainTextMessage,
+                               true,
+                               new CryptoPP::HashFilter(
+                                   hash,
+                                   new CryptoPP::HexEncoder(
+                                       new CryptoPP::StringSink(messageHash)
+                                       )
+                                   )
+                               );
     }
 
     void EncryptMessage() {
@@ -37,18 +52,23 @@ public:
         CryptoPP::StringSource stringSource(plainTextMessage,
                                             true,
                                             new CryptoPP::StreamTransformationFilter(
-                                                encryption, new CryptoPP::StringSink(cipher)
+                                                encryption,
+                                                new CryptoPP::StringSink(cipher)
                                                 )
                                             );
         HexEncodeMessage();
     }
 
-    std::string ReturnEncodedMessage() {
-        return encodedMessage;
+    std::string ReturnMessageHash() {
+        return messageHash;
     }
 
     std::string ReturnCipher() {
         return cipher;
+    }
+
+    std::string ReturnEncodedMessage() {
+        return encodedMessage;
     }
 
     std::string ReturnEncodedKey() {
@@ -59,9 +79,18 @@ public:
         return encodedInitVector;
     }
 
+    void SaveMessageHash() {
+        boost::filesystem::ofstream hashOutputFile(filePathHash);
+        if(!hashOutputFile.is_open()) std::cout << "ERROR: Could not open file!" << std::endl;
+        else {
+            hashOutputFile << messageHash;
+            hashOutputFile.close();
+        }
+    }
+
     void SaveEncryptedMessage() {
         boost::filesystem::ofstream messageOutputFile(filePathMessage);
-        if(!messageOutputFile.is_open()) std::cout << "ERROR: Could not open file! << std::endl";
+        if(!messageOutputFile.is_open()) std::cout << "ERROR: Could not open file!" << std::endl;
         else {
             messageOutputFile << encodedMessage;
             messageOutputFile.close();
