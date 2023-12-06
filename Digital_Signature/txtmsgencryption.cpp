@@ -3,11 +3,14 @@
 
 #include "textencryption.h"
 
+TextEncryption* textEncryption;
+
 TxtMsgEncryption::TxtMsgEncryption(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::TxtMsgEncryption)
 {
     ui->setupUi(this);
+    this->setFixedSize(488, 635);
 }
 
 TxtMsgEncryption::~TxtMsgEncryption()
@@ -17,23 +20,24 @@ TxtMsgEncryption::~TxtMsgEncryption()
 
 void TxtMsgEncryption::on_pbEncrypt_clicked()
 {
+    delete textEncryption;
+
     QString* msgText = new QString;
     *(msgText) = ui->ptePlainTextMessage->toPlainText();
 
-    TextEncryption* textEncryption = new TextEncryption(msgText->toStdString());
+    textEncryption = new TextEncryption(msgText->toStdString());
 
-    textEncryption->CreateMessageHash();
-    textEncryption->SaveMessageHash();
     textEncryption->EncryptMessage();
-    textEncryption->SaveEncryptedMessage();
     ui->pteEncryptedMessage->clear();
-    ui->pteEncryptedMessage->insertPlainText(QString::fromStdString((textEncryption->ReturnEncodedMessage())));
-
-    textEncryption->SaveKey();
-    textEncryption->SaveInitialisationVector();
+    ui->pteEncryptedMessage->insertPlainText(QString::fromStdString((textEncryption->ReturnEncodedEncryptedMessage())));
     ui->pteKey->clear();
     ui->pteKey->insertPlainText(QString::fromStdString(textEncryption->ReturnEncodedKey()));
 
     delete msgText;
-    delete textEncryption;
+}
+
+void TxtMsgEncryption::on_pbSend_clicked()
+{
+    textEncryption->Sign();
+    textEncryption->Send();
 }

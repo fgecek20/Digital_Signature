@@ -8,6 +8,7 @@ TxtMsgDecryption::TxtMsgDecryption(QWidget *parent) :
     ui(new Ui::TxtMsgDecryption)
 {
     ui->setupUi(this);
+    this->setFixedSize(488, 635);
 }
 
 TxtMsgDecryption::~TxtMsgDecryption()
@@ -21,11 +22,10 @@ void TxtMsgDecryption::on_pbDecrypt_clicked()
 
     if(textDecryption->DecryptionPossible()) {
         textDecryption->DecryptText();
+
+        if(!textDecryption->IntegrityCheck()) this->ui->lblWarning->setText("WARNING: Integrity check FAILED! Message has been compromised");
         ui->pteDecryptedMessage->clear();
         ui->pteDecryptedMessage->insertPlainText(QString::fromStdString(textDecryption->ReturnPlainTextMessage()));
-
-        if(textDecryption->IntegrityCheck()) std::cout << "Integrity check PASSED" << std::endl;
-        else std::cout << "Integrity check FAILED" << std::endl;
     }
     else std::cout << "Decryption not possible due to missing directory or files" << std::endl;
 

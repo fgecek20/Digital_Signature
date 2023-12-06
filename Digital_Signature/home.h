@@ -20,6 +20,8 @@ private slots:
 
     void on_pbDecrypt_clicked();
 
+    void on_pbGenerateKeys_clicked();
+
 private:
     Ui::Home *ui;
 };

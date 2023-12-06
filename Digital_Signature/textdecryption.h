@@ -10,15 +10,20 @@
 #include "serpent.h"
 #include "hex.h"
 #include "sha.h"
+#include "rsa.h"
+#include "files.h"
+#include "osrng.h"
+#include "pssr.h"
 
 class TextDecryption {
 
 private:
-    std::string plainTextMessage, messageHash, cipher, encodedMessage, encodedKey, encodedInitVector;
+    std::string plainTextMessage, messageHash, cipher, encodedMessage, encodedKey, encodedInitVector, encodedEncryptedKey, encryptedKey, encodedSignature, signature;
     CryptoPP::SecByteBlock* key;
     CryptoPP::byte initVector[CryptoPP::Serpent::BLOCKSIZE];
-    boost::filesystem::path directory, filePathHash, filePathMessage, filePathKey, filePathInitVector;
+    boost::filesystem::path directory, filePathMessage, filePathKey, filePathInitVector, filePathSignature;
     CryptoPP::SHA256 hash;
+    CryptoPP::AutoSeededRandomPool prng;
     bool decryptionPossible;
 
 public:
@@ -26,21 +31,22 @@ public:
         decryptionPossible = true;
 
         directory.append("./MessageComponents");
-        filePathHash = directory / "message_hash.txt";
         filePathMessage = directory / "encrypted_message.txt";
         filePathKey = directory / "serpent_encryption_key.txt";
         filePathInitVector = directory / "initialisation_vector.txt";
+        filePathSignature = directory / "signature.txt";
 
         if(DirectoryExists()) {
-            FetchHashFromFile();
             FetchMessageFromFile();
             FetchKeyFromFile();
             FetchInitialisationVectorFromFile();
+            FetchSignatureFromFile();
 
             if(decryptionPossible) {
                 HexDecodeMessage();
                 HexDecodeKey();
                 HexDecodeInitialisationVector();
+                HexDecodeSignature();
             }
         }
         else decryptionPossible = false;
@@ -58,37 +64,39 @@ public:
     }
 
     bool IntegrityCheck() {
-        std::string messageHash_;
-        CryptoPP::StringSource stringSource(plainTextMessage,
-                                            true,
-                                            new CryptoPP::HashFilter(
-                                                hash,
-                                                new CryptoPP::HexEncoder(
-                                                    new CryptoPP::StringSink(messageHash_)
+        if(VerifySignature()) {
+            std::string messageHash_;
+            CryptoPP::StringSource stringSource(plainTextMessage,
+                                                true,
+                                                new CryptoPP::HashFilter(
+                                                    hash,
+                                                    new CryptoPP::HexEncoder(
+                                                        new CryptoPP::StringSink(messageHash_)
+                                                        )
                                                     )
-                                                )
-                                            );
-        if(!messageHash_.compare(messageHash)) return true;
+                                                );
+            if(!messageHash_.compare(messageHash)) return true;
+            else return false;
+        }
         else return false;
 
-    }
-
-    std::string ReturnPlainTextMessage() {
-        return plainTextMessage;
     }
 
     bool DecryptionPossible() {
         return decryptionPossible;
     }
 
+    std::string ReturnPlainTextMessage() {
+        return plainTextMessage;
+    }
+
 private:
-    void FetchHashFromFile() {
-        if(HashFileExists()) {
-            boost::filesystem::fstream hashInputFile(filePathHash);
-            if(hashInputFile.is_open()) {
-                hashInputFile >> messageHash;
-                hashInputFile.close();
-            }
+    void FetchSignatureFromFile() {
+        if(SignatureFileExists()) {
+            boost::filesystem::fstream signatureInputFile(filePathSignature);
+            if(signatureInputFile.is_open()) signatureInputFile >> encodedSignature;
+            else std::cout << "ERROR: Could not open file containing signature!" << std::endl;
+            signatureInputFile.close();
         }
         else decryptionPossible = false;
     }
@@ -96,10 +104,9 @@ private:
     void FetchMessageFromFile() {
         if(EncryptedMessageFileExists()) {
             boost::filesystem::ifstream messageInputFile(filePathMessage);
-            if(messageInputFile.is_open()) {
-                messageInputFile >> encodedMessage;
-                messageInputFile.close();
-            }
+            if(messageInputFile.is_open()) messageInputFile >> encodedMessage;
+            else std::cout << "ERROR: Could not open file containing message!" << std::endl;
+            messageInputFile.close();
         }
         else decryptionPossible = false;
     }
@@ -107,10 +114,9 @@ private:
     void FetchKeyFromFile() {
         if(KeyFileExists()) {
             boost::filesystem::ifstream keyInputFile(filePathKey);
-            if(keyInputFile.is_open()) {
-                keyInputFile >> encodedKey;
-                keyInputFile.close();
-            }
+            if(keyInputFile.is_open()) keyInputFile >> encodedEncryptedKey;
+            else std::cout << "ERROR: Could not open file containing key!" << std::endl;
+            keyInputFile.close();
         }
         else decryptionPossible = false;
     }
@@ -118,60 +124,44 @@ private:
     void FetchInitialisationVectorFromFile() {
         if(InitialisationVectorFileExists()) {
             boost::filesystem::ifstream initVectorInputFile(filePathInitVector);
-            if(initVectorInputFile.is_open()) {
-                initVectorInputFile >> encodedInitVector;
-                initVectorInputFile.close();
-            }
+            if(initVectorInputFile.is_open()) initVectorInputFile >> encodedInitVector;
+            else std::cout << "ERROR: Could not open file containing initialisation vector!" << std::endl;
+            initVectorInputFile.close();
         }
         else decryptionPossible = false;
     }
 
-    bool HashFileExists() {
-        boost::filesystem::ifstream hashInputFile(filePathHash);
-        if(!hashInputFile.is_open()) {
-            std::cout << "ERROR: Could not open file containing message hash!" << std::endl << std::endl;
+    bool SignatureFileExists() {
+        if(!boost::filesystem::exists(filePathSignature)) {
+            std::cout << "ERROR: Could not find the file containing message hash!" << std::endl << std::endl;
             return false;
         }
-        else {
-            hashInputFile.close();
-            return true;
-        }
+        else return true;
     }
 
     bool EncryptedMessageFileExists() {
-        boost::filesystem::ifstream messageInputFile(filePathMessage);
-        if(!messageInputFile.is_open()) {
-            std::cout << "ERROR: Could not open file containing encrypted message!" << std::endl << std::endl;
+        if(!boost::filesystem::exists(filePathMessage)) {
+            std::cout << "ERROR: Could not find the file containing the encrypted message!" << std::endl << std::endl;
             return false;
         }
-        else {
-            messageInputFile.close();
-            return true;
-        }
+        else return true;
     }
 
     bool KeyFileExists() {
-        boost::filesystem::ifstream keyInputFile(filePathKey);
-        if(!keyInputFile.is_open()) {
-            std::cout << "ERROR: Could not open file containing encryption key!" << std::endl << std::endl;
+        if(!boost::filesystem::exists(filePathKey)) {
+            std::cout << "ERROR: Could not find the file containing the encryption key!" << std::endl << std::endl;
             return false;
         }
-        else {
-            keyInputFile.close();
-            return true;
-        }
+        else return true;
     }
 
     bool InitialisationVectorFileExists() {
         boost::filesystem::ifstream initVectorInputFile(filePathInitVector);
-        if(!initVectorInputFile.is_open()) {
-            std::cout << "ERROR: Could not open file containing initialisation vector!" << std::endl << std::endl;
+        if(!boost::filesystem::exists(filePathInitVector)) {
+            std::cout << "ERROR: Could not the file containing the initialisation vector!" << std::endl << std::endl;
             return false;
         }
-        else {
-            initVectorInputFile.close();
-            return true;
-        }
+        else return true;
     }
 
     bool DirectoryExists() {
@@ -183,6 +173,49 @@ private:
         else return true;
     }
 
+    bool VerifySignature() {
+        bool verified = true;
+        CryptoPP::RSA::PublicKey senderPublicKey;
+        CryptoPP::FileSource senderPubKeyInputFile("./Keys/Sender/public_key.txt", true);
+        senderPublicKey.BERDecode(senderPubKeyInputFile);
+
+        CryptoPP::RSASS<CryptoPP::PSSR, CryptoPP::SHA256>::Verifier verifier(senderPublicKey);
+
+        try {
+            CryptoPP::StringSource stringSource(signature,
+                                                true,
+                                                new CryptoPP::SignatureVerificationFilter(
+                                                    verifier,
+                                                    new CryptoPP::StringSink(
+                                                        messageHash), CryptoPP::SignatureVerificationFilter::THROW_EXCEPTION | CryptoPP::SignatureVerificationFilter::PUT_MESSAGE
+                                                    )
+                                                );
+        }
+        catch(CryptoPP::Exception exception) {
+            std::cout << "FAILED TO VERIFY SIGNATURE\n\n" << exception.what() << std::endl;
+            verified = false;
+        }
+        return verified;
+    }
+
+    void DecryptKey() {
+        HexDecodeEncryptedKey();
+        CryptoPP::RSA::PrivateKey receiverPrivateKey;
+        CryptoPP::FileSource receiverPrivKeyInputFile("./Keys/Receiver/private_key.txt", true);
+
+        receiverPrivateKey.BERDecode(receiverPrivKeyInputFile);
+
+        CryptoPP::RSAES_OAEP_SHA_Decryptor decryptor(receiverPrivateKey);
+
+        CryptoPP::StringSource stringSource(encryptedKey,
+                                            true,
+                                            new CryptoPP::PK_DecryptorFilter(
+                                                prng, decryptor, new CryptoPP::StringSink(
+                                                                     encodedKey)
+                                                )
+                                            );
+    }
+
     void HexDecodeMessage() {
         CryptoPP::StringSource stringSource(encodedMessage,
                                             true,
@@ -192,7 +225,17 @@ private:
                                             );
     }
 
+    void HexDecodeEncryptedKey() {
+        CryptoPP::StringSource stringSource(encodedEncryptedKey,
+                                            true,
+                                            new CryptoPP::HexDecoder(
+                                                new CryptoPP::StringSink(encryptedKey)
+                                                )
+                                            );
+    }
+
     void HexDecodeKey() {
+        DecryptKey();
         std::string key_;
         CryptoPP::StringSource stringSource(encodedKey,
                                             true,
@@ -221,5 +264,15 @@ private:
                                           true,
                                           new CryptoPP::ArraySink(initVector, CryptoPP::Serpent::BLOCKSIZE)
                                           );
+    }
+
+    void HexDecodeSignature() {
+        CryptoPP::StringSource stringSource(encodedSignature,
+                                            true,
+                                            new CryptoPP::HexDecoder(
+                                                new CryptoPP::StringSink(
+                                                    signature)
+                                                )
+                                            );
     }
 };

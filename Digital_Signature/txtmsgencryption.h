@@ -18,6 +18,8 @@ public:
 private slots:
     void on_pbEncrypt_clicked();
 
+    void on_pbSend_clicked();
+
 private:
     Ui::TxtMsgEncryption *ui;
 };
