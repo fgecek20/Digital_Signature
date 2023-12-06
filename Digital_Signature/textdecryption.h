@@ -18,7 +18,7 @@
 class TextDecryption {
 
 private:
-    std::string plainTextMessage, messageHash, cipher, encodedMessage, encodedKey, encodedInitVector, encodedEncryptedKey, encryptedKey, encodedSignature, signature;
+    std::string plainTextMessage, messageHash, cipher, encodedMessage, encodedKey, encodedInitVector, encodedEncryptedKey, encryptedKey, encodedSignature, signature, errorMessage;
     CryptoPP::SecByteBlock* key;
     CryptoPP::byte initVector[CryptoPP::Serpent::BLOCKSIZE];
     boost::filesystem::path directory, filePathMessage, filePathKey, filePathInitVector, filePathSignature;
@@ -28,6 +28,7 @@ private:
 
 public:
     TextDecryption() {
+        errorMessage = "";
         decryptionPossible = true;
 
         directory.append("./MessageComponents");
@@ -55,12 +56,17 @@ public:
     void DecryptText() {
         CryptoPP::CBC_Mode<CryptoPP::Serpent>::Decryption decryption;
         decryption.SetKeyWithIV(*(key), key->size(), initVector);
-        CryptoPP::StringSource stringSource(cipher,
-                                            true,
-                                            new CryptoPP::StreamTransformationFilter(
-                                                decryption, new CryptoPP::StringSink(plainTextMessage)
-                                                )
-                                            );
+        try {
+            CryptoPP::StringSource stringSource(cipher,
+                                                true,
+                                                new CryptoPP::StreamTransformationFilter(
+                                                    decryption, new CryptoPP::StringSink(plainTextMessage)
+                                                    )
+                                                );
+        }
+        catch(CryptoPP::Exception exception) {
+            errorMessage += "ERROR: FAILED TO DECRYPT MESSAGE\n" + exception.GetWhat() + "\nLikely cause was tempering with the key or message\n\n";
+        }
     }
 
     bool IntegrityCheck() {
@@ -90,22 +96,19 @@ public:
         return plainTextMessage;
     }
 
-private:
-    void FetchSignatureFromFile() {
-        if(SignatureFileExists()) {
-            boost::filesystem::fstream signatureInputFile(filePathSignature);
-            if(signatureInputFile.is_open()) signatureInputFile >> encodedSignature;
-            else std::cout << "ERROR: Could not open file containing signature!" << std::endl;
-            signatureInputFile.close();
-        }
-        else decryptionPossible = false;
+    std::string ReturnErrorMessage() {
+        return errorMessage;
     }
 
+private:
     void FetchMessageFromFile() {
         if(EncryptedMessageFileExists()) {
             boost::filesystem::ifstream messageInputFile(filePathMessage);
             if(messageInputFile.is_open()) messageInputFile >> encodedMessage;
-            else std::cout << "ERROR: Could not open file containing message!" << std::endl;
+            else {
+                errorMessage += "ERROR: Could not open file containing message!\n\n";
+                decryptionPossible = false;
+            }
             messageInputFile.close();
         }
         else decryptionPossible = false;
@@ -115,7 +118,10 @@ private:
         if(KeyFileExists()) {
             boost::filesystem::ifstream keyInputFile(filePathKey);
             if(keyInputFile.is_open()) keyInputFile >> encodedEncryptedKey;
-            else std::cout << "ERROR: Could not open file containing key!" << std::endl;
+            else {
+                errorMessage += "ERROR: Could not open file containing key!\n\n";
+                decryptionPossible = false;
+            }
             keyInputFile.close();
         }
         else decryptionPossible = false;
@@ -125,15 +131,31 @@ private:
         if(InitialisationVectorFileExists()) {
             boost::filesystem::ifstream initVectorInputFile(filePathInitVector);
             if(initVectorInputFile.is_open()) initVectorInputFile >> encodedInitVector;
-            else std::cout << "ERROR: Could not open file containing initialisation vector!" << std::endl;
+            else {
+                errorMessage += "ERROR: Could not open file containing initialisation vector!\n\n";
+                decryptionPossible = false;
+            }
             initVectorInputFile.close();
         }
         else decryptionPossible = false;
     }
 
-    bool SignatureFileExists() {
-        if(!boost::filesystem::exists(filePathSignature)) {
-            std::cout << "ERROR: Could not find the file containing message hash!" << std::endl << std::endl;
+    void FetchSignatureFromFile() {
+        if(SignatureFileExists()) {
+            boost::filesystem::fstream signatureInputFile(filePathSignature);
+            if(signatureInputFile.is_open()) signatureInputFile >> encodedSignature;
+            else {
+                errorMessage += "ERROR: Could not open file containing signature!\n\n";
+                decryptionPossible = false;
+            }
+            signatureInputFile.close();
+        }
+        else decryptionPossible = false;
+    }
+
+    bool DirectoryExists() {
+        if(!boost::filesystem::exists(directory)) {
+            errorMessage += "ERROR: Could not find directory 'MessageComponents'\nTry sending a message first...\n\n";
             return false;
         }
         else return true;
@@ -141,7 +163,7 @@ private:
 
     bool EncryptedMessageFileExists() {
         if(!boost::filesystem::exists(filePathMessage)) {
-            std::cout << "ERROR: Could not find the file containing the encrypted message!" << std::endl << std::endl;
+            errorMessage += "ERROR: Could not find the file containing the encrypted message!\n\n";
             return false;
         }
         else return true;
@@ -149,7 +171,7 @@ private:
 
     bool KeyFileExists() {
         if(!boost::filesystem::exists(filePathKey)) {
-            std::cout << "ERROR: Could not find the file containing the encryption key!" << std::endl << std::endl;
+            errorMessage += "ERROR: Could not find the file containing the encryption key!\n\n";
             return false;
         }
         else return true;
@@ -158,16 +180,15 @@ private:
     bool InitialisationVectorFileExists() {
         boost::filesystem::ifstream initVectorInputFile(filePathInitVector);
         if(!boost::filesystem::exists(filePathInitVector)) {
-            std::cout << "ERROR: Could not the file containing the initialisation vector!" << std::endl << std::endl;
+            errorMessage += "ERROR: Could not the file containing the initialisation vector!\n\n";
             return false;
         }
         else return true;
     }
 
-    bool DirectoryExists() {
-        if(!boost::filesystem::exists(directory)) {
-            std::cout << "ERROR: Could not find directory 'MessageComponents'" << std::endl;
-            std::cout << "Try sending a message first..." << std::endl << std::endl;
+    bool SignatureFileExists() {
+        if(!boost::filesystem::exists(filePathSignature)) {
+            errorMessage += "ERROR: Could not find the file containing message hash!\n\n";
             return false;
         }
         else return true;
@@ -192,7 +213,7 @@ private:
                                                 );
         }
         catch(CryptoPP::Exception exception) {
-            std::cout << "FAILED TO VERIFY SIGNATURE\n\n" << exception.what() << std::endl;
+            errorMessage += "ERROR: FAILED TO VERIFY SIGNATURE\n" + exception.GetWhat() + "\n\n";
             verified = false;
         }
         return verified;
@@ -207,13 +228,18 @@ private:
 
         CryptoPP::RSAES_OAEP_SHA_Decryptor decryptor(receiverPrivateKey);
 
-        CryptoPP::StringSource stringSource(encryptedKey,
-                                            true,
-                                            new CryptoPP::PK_DecryptorFilter(
-                                                prng, decryptor, new CryptoPP::StringSink(
-                                                                     encodedKey)
-                                                )
-                                            );
+        try {
+            CryptoPP::StringSource stringSource(encryptedKey,
+                                                true,
+                                                new CryptoPP::PK_DecryptorFilter(
+                                                    prng, decryptor, new CryptoPP::StringSink(
+                                                                        encodedKey)
+                                                    )
+                                                );
+        }
+        catch(CryptoPP::Exception exception) {
+            errorMessage += "ERROR: FAILED TO DECRYPT KEY\n" + exception.GetWhat() + "\nLikely cause was tempering with the key\n\n";
+        }
     }
 
     void HexDecodeMessage() {

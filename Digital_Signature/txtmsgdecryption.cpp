@@ -23,11 +23,13 @@ void TxtMsgDecryption::on_pbDecrypt_clicked()
     if(textDecryption->DecryptionPossible()) {
         textDecryption->DecryptText();
 
-        if(!textDecryption->IntegrityCheck()) this->ui->lblWarning->setText("WARNING: Integrity check FAILED! Message has been compromised");
         ui->pteDecryptedMessage->clear();
         ui->pteDecryptedMessage->insertPlainText(QString::fromStdString(textDecryption->ReturnPlainTextMessage()));
+
+        if(!textDecryption->IntegrityCheck()) this->ui->lblWarning->setText(QString::fromStdString("Integrity check FAILED\n\n" + textDecryption->ReturnErrorMessage()));
+        else this->ui->lblWarning->setText("Integrity check PASSED");
     }
-    else std::cout << "Decryption not possible due to missing directory or files" << std::endl;
+    else this->ui->lblWarning->setText(QString::fromStdString(textDecryption->ReturnErrorMessage()));
 
     delete textDecryption;
 }
