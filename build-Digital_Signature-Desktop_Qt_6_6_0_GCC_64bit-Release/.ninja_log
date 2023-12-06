@@ -1,0 +1,11 @@
+# ninja log v5
+1	304	1701854321334605380	Digital_Signature_autogen/timestamp	57057c572704262d
+1	304	1701854321334605380	Digital_Signature_autogen/mocs_compilation.cpp	57057c572704262d
+1	304	1701854321334605380	/home/user/Documents/foi/diplomski/1. semestar/napredni operacijski sustavi/Digital_Signature/build-Digital_Signature-Desktop_Qt_6_6_0_GCC_64bit-Release/Digital_Signature_autogen/timestamp	57057c572704262d
+1	304	1701854321334605380	/home/user/Documents/foi/diplomski/1. semestar/napredni operacijski sustavi/Digital_Signature/build-Digital_Signature-Desktop_Qt_6_6_0_GCC_64bit-Release/Digital_Signature_autogen/mocs_compilation.cpp	57057c572704262d
+304	2854	1701854323886591645	CMakeFiles/Digital_Signature.dir/main.cpp.o	f5c7923231aec70e
+304	2893	1701854323926591430	CMakeFiles/Digital_Signature.dir/Digital_Signature_autogen/mocs_compilation.cpp.o	86f5ca42da5a71d6
+305	3603	1701854324634587618	CMakeFiles/Digital_Signature.dir/home.cpp.o	c5dd05db52f8b8bc
+305	5105	1701854326138579522	CMakeFiles/Digital_Signature.dir/txtmsgdecryption.cpp.o	386b59cf425c0427
+305	5502	1701854326534577390	CMakeFiles/Digital_Signature.dir/txtmsgencryption.cpp.o	28e31edb45421d87
+5502	5915	1701854326946575171	Digital_Signature	c771d0c99d526c99

@@ -1,0 +1,10 @@
+# This file is managed by Qt Creator, do not edit!
+
+set("CMAKE_GENERATOR" "Ninja" CACHE "STRING" "" FORCE)
+set("CMAKE_BUILD_TYPE" "Release" CACHE "STRING" "" FORCE)
+set("CMAKE_PROJECT_INCLUDE_BEFORE" "/home/user/Documents/foi/diplomski/1. semestar/napredni operacijski sustavi/Digital_Signature/build-Digital_Signature-Desktop_Qt_6_6_0_GCC_64bit-Release/.qtc/package-manager/auto-setup.cmake" CACHE "FILEPATH" "" FORCE)
+set("QT_QMAKE_EXECUTABLE" "/home/user/Qt/6.6.0/gcc_64/bin/qmake" CACHE "FILEPATH" "" FORCE)
+set("CMAKE_PREFIX_PATH" "/home/user/Qt/6.6.0/gcc_64" CACHE "PATH" "" FORCE)
+set("CMAKE_C_COMPILER" "/usr/bin/gcc" CACHE "FILEPATH" "" FORCE)
+set("CMAKE_CXX_COMPILER" "/usr/bin/g++" CACHE "FILEPATH" "" FORCE)
+set("CMAKE_CXX_FLAGS_INIT" "" CACHE "STRING" "" FORCE)
